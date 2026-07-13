@@ -1,5 +1,6 @@
 using EarthExplorer.Core.Models;
 using EarthExplorer.Core.Utilities;
+using Xunit;
 
 namespace EarthExplorer.Tests;
 
