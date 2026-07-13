@@ -1,6 +1,7 @@
 name: Windows build
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, "codex/**"]
   pull_request:
@@ -12,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -32,8 +33,34 @@ jobs:
       - name: Publish win-x64
         run: dotnet publish src/EarthExplorer.App/EarthExplorer.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64 -p:PublishSingleFile=false
 
+      - name: Bundle local OCR models
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/win-x64/tessdata | Out-Null
+          Invoke-WebRequest https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata -OutFile artifacts/win-x64/tessdata/eng.traineddata
+          Invoke-WebRequest https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata -OutFile artifacts/win-x64/tessdata/rus.traineddata
+          Get-ChildItem artifacts/win-x64/tessdata/*.traineddata | ForEach-Object {
+            if ($_.Length -lt 1000000) { throw "OCR model $($_.Name) is unexpectedly small" }
+            Get-FileHash $_.FullName -Algorithm SHA256
+          }
+
+      - name: Prepare portable ZIP and prerequisites
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/downloads | Out-Null
+          New-Item -ItemType Directory -Force artifacts/prerequisites | Out-Null
+          Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/downloads/ExploreEarth-portable-win-x64.zip -CompressionLevel Optimal
+          Invoke-WebRequest https://aka.ms/vs/17/release/vc_redist.x64.exe -OutFile artifacts/prerequisites/vc_redist.x64.exe
+          if ((Get-Item artifacts/prerequisites/vc_redist.x64.exe).Length -lt 1000000) { throw "VC++ redistributable download failed" }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer/ExploreEarth.iss
+
       - uses: actions/upload-artifact@v4
         with:
-          name: ExploreEarth-win-x64
-          path: artifacts/win-x64
+          name: ExploreEarth-downloads
+          path: artifacts/downloads
           if-no-files-found: error

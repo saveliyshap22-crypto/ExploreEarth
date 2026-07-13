@@ -21,6 +21,7 @@ public partial class MainWindow : Window
 
         EarthMap.Map = mapController.Map;
         EarthMap.MapPointerMoved += OnMapPointerMoved;
+        EarthMap.MapTapped += OnMapTapped;
         mapController.Map.Navigator.ViewportChanged += OnViewportChanged;
         Closed += OnClosed;
     }
@@ -31,6 +32,15 @@ public partial class MainWindow : Window
         if (double.IsFinite(latitude) && double.IsFinite(longitude))
         {
             _viewModel.UpdatePointer(longitude, latitude);
+        }
+    }
+
+    private void OnMapTapped(object? sender, MapEventArgs e)
+    {
+        var (longitude, latitude) = SphericalMercator.ToLonLat(e.WorldPosition.X, e.WorldPosition.Y);
+        if (double.IsFinite(latitude) && double.IsFinite(longitude))
+        {
+            _viewModel.HandleMapTap(longitude, latitude);
         }
     }
 
@@ -79,6 +89,7 @@ public partial class MainWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         EarthMap.MapPointerMoved -= OnMapPointerMoved;
+        EarthMap.MapTapped -= OnMapTapped;
         _mapController.Map.Navigator.ViewportChanged -= OnViewportChanged;
         Closed -= OnClosed;
     }

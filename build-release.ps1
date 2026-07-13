@@ -27,7 +27,20 @@ try {
         --output (Join-Path $dist $Runtime) `
         -p:PublishSingleFile=false
 
-    Write-Host "ExploreEarth успешно собран: $dist" -ForegroundColor Green
+    $publishDirectory = Join-Path $dist $Runtime
+    $tessdataDirectory = Join-Path $publishDirectory "tessdata"
+    New-Item $tessdataDirectory -ItemType Directory -Force | Out-Null
+    Invoke-WebRequest `
+        "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata" `
+        -OutFile (Join-Path $tessdataDirectory "eng.traineddata")
+    Invoke-WebRequest `
+        "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata" `
+        -OutFile (Join-Path $tessdataDirectory "rus.traineddata")
+
+    $portableArchive = Join-Path $dist "ExploreEarth-portable-$Runtime.zip"
+    Compress-Archive -Path (Join-Path $publishDirectory "*") -DestinationPath $portableArchive -CompressionLevel Optimal
+
+    Write-Host "ExploreEarth успешно собран: $portableArchive" -ForegroundColor Green
 }
 catch {
     Write-Error "Сборка ExploreEarth завершилась ошибкой: $($_.Exception.Message)"

@@ -22,6 +22,7 @@ public partial class App : Application
         services.AddSingleton<MapController>();
         services.AddSingleton<IMapNavigationService>(provider => provider.GetRequiredService<MapController>());
         services.AddSingleton<IImageMetadataService, ImageMetadataService>();
+        services.AddSingleton<IPhotoGeolocationService, LocalPhotoGeolocationService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
