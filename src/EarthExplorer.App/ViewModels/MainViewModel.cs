@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Windows.Threading;
 using EarthExplorer.App.Services;
 using EarthExplorer.Core.Models;
