@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ExploreEarth</AssemblyName>
+    <RootNamespace>EarthExplorer.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EarthExplorer.Core\EarthExplorer.Core.csproj" />
+    <ProjectReference Include="..\EarthExplorer.Map\EarthExplorer.Map.csproj" />
+    <ProjectReference Include="..\EarthExplorer.AI\EarthExplorer.AI.csproj" />
+    <ProjectReference Include="..\EarthExplorer.Infrastructure\EarthExplorer.Infrastructure.csproj" />
+    <PackageReference Include="Mapsui.Wpf" Version="5.1.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\appsettings.example.json" Link="appsettings.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

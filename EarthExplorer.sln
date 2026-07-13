@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.Core", "src\EarthExplorer.Core\EarthExplorer.Core.csproj", "{D91B4A9C-1A91-4F04-9E65-2A3D64D18575}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.Map", "src\EarthExplorer.Map\EarthExplorer.Map.csproj", "{45C808BA-2A44-42F7-AE78-8B3B1839F9F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.AI", "src\EarthExplorer.AI\EarthExplorer.AI.csproj", "{CC2888E8-D779-4227-9CF8-5B3BB593E92B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.Infrastructure", "src\EarthExplorer.Infrastructure\EarthExplorer.Infrastructure.csproj", "{1CA09A4D-C691-41F0-9228-E7096FA184A0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.App", "src\EarthExplorer.App\EarthExplorer.App.csproj", "{6ADFE9C8-2487-4A0D-8CF6-05F8B1C95BE2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EarthExplorer.Tests", "tests\EarthExplorer.Tests\EarthExplorer.Tests.csproj", "{013D7C38-2DB0-4D47-A2D8-C5838AC72970}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D91B4A9C-1A91-4F04-9E65-2A3D64D18575}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D91B4A9C-1A91-4F04-9E65-2A3D64D18575}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D91B4A9C-1A91-4F04-9E65-2A3D64D18575}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D91B4A9C-1A91-4F04-9E65-2A3D64D18575}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45C808BA-2A44-42F7-AE78-8B3B1839F9F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45C808BA-2A44-42F7-AE78-8B3B1839F9F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45C808BA-2A44-42F7-AE78-8B3B1839F9F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45C808BA-2A44-42F7-AE78-8B3B1839F9F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC2888E8-D779-4227-9CF8-5B3BB593E92B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC2888E8-D779-4227-9CF8-5B3BB593E92B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC2888E8-D779-4227-9CF8-5B3BB593E92B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC2888E8-D779-4227-9CF8-5B3BB593E92B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CA09A4D-C691-41F0-9228-E7096FA184A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CA09A4D-C691-41F0-9228-E7096FA184A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CA09A4D-C691-41F0-9228-E7096FA184A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CA09A4D-C691-41F0-9228-E7096FA184A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6ADFE9C8-2487-4A0D-8CF6-05F8B1C95BE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6ADFE9C8-2487-4A0D-8CF6-05F8B1C95BE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6ADFE9C8-2487-4A0D-8CF6-05F8B1C95BE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6ADFE9C8-2487-4A0D-8CF6-05F8B1C95BE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{013D7C38-2DB0-4D47-A2D8-C5838AC72970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{013D7C38-2DB0-4D47-A2D8-C5838AC72970}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{013D7C38-2DB0-4D47-A2D8-C5838AC72970}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{013D7C38-2DB0-4D47-A2D8-C5838AC72970}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
