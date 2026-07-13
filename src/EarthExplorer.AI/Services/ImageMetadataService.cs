@@ -44,9 +44,9 @@ public sealed class ImageMetadataService : IImageMetadataService
         GeoCoordinate? coordinate = null;
         var gps = directories.OfType<GpsDirectory>().FirstOrDefault();
         var location = gps?.GetGeoLocation();
-        if (location is not null && !location.IsZero)
+        if (location.HasValue && !location.Value.IsZero)
         {
-            coordinate = new GeoCoordinate(location.Latitude, location.Longitude);
+            coordinate = new GeoCoordinate(location.Value.Latitude, location.Value.Longitude);
         }
 
         DateTimeOffset? capturedAt = null;
