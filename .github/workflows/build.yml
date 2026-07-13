@@ -30,7 +30,7 @@ jobs:
         run: dotnet test EarthExplorer.sln --configuration Release --no-build --logger trx
 
       - name: Publish win-x64
-        run: dotnet publish src/EarthExplorer.App/EarthExplorer.App.csproj --configuration Release --runtime win-x64 --self-contained true --no-build --output artifacts/win-x64 -p:PublishSingleFile=false
+        run: dotnet publish src/EarthExplorer.App/EarthExplorer.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64 -p:PublishSingleFile=false
 
       - uses: actions/upload-artifact@v4
         with:
