@@ -24,7 +24,7 @@
 
 ## Скачать и запустить
 
-Откройте последний успешный запуск **Windows build** в GitHub Actions и скачайте артефакт `ExploreEarth-downloads`. Внутри находятся:
+Откройте [последний GitHub Release](https://github.com/saveliyshap22-crypto/ExploreEarth/releases/latest) и скачайте один из файлов:
 
 - `ExploreEarth-Setup-win-x64.exe` — рекомендуемый установщик; ставит приложение, OCR-модели и Microsoft Visual C++ Runtime;
 - `ExploreEarth-portable-win-x64.zip` — распакуйте папку и запустите `ExploreEarth.exe` без установки.
