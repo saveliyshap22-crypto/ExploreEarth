@@ -3,9 +3,16 @@ name: Windows build
 on:
   workflow_dispatch:
   push:
-    branches: [main, "codex/**"]
+    branches: [main]
   pull_request:
     branches: [main]
+
+env:
+  APP_VERSION: 1.0.0
+
+concurrency:
+  group: exploreearth-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -13,7 +20,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
@@ -25,13 +32,34 @@ jobs:
         run: dotnet restore EarthExplorer.sln
 
       - name: Build
-        run: dotnet build EarthExplorer.sln --configuration Release --no-restore
+        run: dotnet build EarthExplorer.sln --configuration Release --no-restore -p:Version=${{ env.APP_VERSION }}
 
       - name: Test
         run: dotnet test EarthExplorer.sln --configuration Release --no-build --logger trx
 
       - name: Publish win-x64
-        run: dotnet publish src/EarthExplorer.App/EarthExplorer.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64 -p:PublishSingleFile=false
+        run: dotnet publish src/EarthExplorer.App/EarthExplorer.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64 -p:PublishSingleFile=false -p:Version=${{ env.APP_VERSION }}
+
+      - name: Smoke-check published application
+        shell: pwsh
+        run: |
+          $requiredFiles = @(
+            "artifacts/win-x64/ExploreEarth.exe",
+            "artifacts/win-x64/Web/globe.html",
+            "artifacts/win-x64/LICENSE",
+            "artifacts/win-x64/THIRD_PARTY_NOTICES.md"
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file)) { throw "Required publish file is missing: $file" }
+          }
+
+          $webViewLoader = Get-ChildItem artifacts/win-x64 -Recurse -Filter WebView2Loader.dll | Select-Object -First 1
+          if ($null -eq $webViewLoader) { throw "WebView2Loader.dll is missing from the publish output" }
+
+          $productVersion = (Get-Item artifacts/win-x64/ExploreEarth.exe).VersionInfo.ProductVersion
+          if (-not $productVersion.StartsWith($env:APP_VERSION)) {
+            throw "ExploreEarth.exe version is '$productVersion', expected '$env:APP_VERSION'"
+          }
 
       - name: Bundle local OCR models
         shell: pwsh
@@ -49,19 +77,40 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts/downloads | Out-Null
           New-Item -ItemType Directory -Force artifacts/prerequisites | Out-Null
-          Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/downloads/ExploreEarth-portable-win-x64.zip -CompressionLevel Optimal
           Invoke-WebRequest https://aka.ms/vs/17/release/vc_redist.x64.exe -OutFile artifacts/prerequisites/vc_redist.x64.exe
+          Invoke-WebRequest "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile artifacts/prerequisites/MicrosoftEdgeWebview2Setup.exe
+
           if ((Get-Item artifacts/prerequisites/vc_redist.x64.exe).Length -lt 1000000) { throw "VC++ redistributable download failed" }
+          if ((Get-Item artifacts/prerequisites/MicrosoftEdgeWebview2Setup.exe).Length -lt 500000) { throw "WebView2 bootstrapper download failed" }
+
+          New-Item -ItemType Directory -Force artifacts/win-x64/prerequisites | Out-Null
+          Copy-Item artifacts/prerequisites/* artifacts/win-x64/prerequisites/ -Force
+          @'
+          @echo off
+          echo Installing Microsoft Visual C++ Runtime...
+          "%~dp0prerequisites\vc_redist.x64.exe" /install /quiet /norestart
+          echo Installing Microsoft Edge WebView2 Runtime...
+          "%~dp0prerequisites\MicrosoftEdgeWebview2Setup.exe" /silent /install
+          echo Prerequisites installation finished.
+          pause
+          '@ | Set-Content artifacts/win-x64/Install-Prerequisites.cmd -Encoding ascii
+
+          $portable = "artifacts/downloads/ExploreEarth-$env:APP_VERSION-portable-win-x64.zip"
+          Compress-Archive -Path artifacts/win-x64/* -DestinationPath $portable -CompressionLevel Optimal
+          if ((Get-Item $portable).Length -lt 1000000) { throw "Portable archive is unexpectedly small" }
 
       - name: Build installer
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer/ExploreEarth.iss
+          $installer = "artifacts/downloads/ExploreEarth-$env:APP_VERSION-Setup-win-x64.exe"
+          if (-not (Test-Path $installer)) { throw "Installer was not produced: $installer" }
+          if ((Get-Item $installer).Length -lt 1000000) { throw "Installer is unexpectedly small" }
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ExploreEarth-downloads
+          name: ExploreEarth-${{ env.APP_VERSION }}-downloads
           path: artifacts/downloads
           if-no-files-found: error
 
@@ -71,10 +120,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v0.2.0 --repo $env:GITHUB_REPOSITORY 2>$null
+          $tag = "v$env:APP_VERSION"
+          @"
+          ExploreEarth 1.0 — первый стабильный выпуск.
+
+          Что внутри:
+          - 2D-карта OpenStreetMap и топографический слой;
+          - интерактивная 3D Земля с атмосферой и освещением;
+          - перетаскиваемый человечек и открытые уличные панорамы Panoramax;
+          - GeoGuessr с реальными уличными фотографиями, расстоянием и очками;
+          - поиск мест и координат;
+          - локальные EXIF и OCR русского/английского текста;
+          - установщик Windows x64 и portable ZIP.
+
+          Установщик автоматически проверяет и при необходимости ставит WebView2 Runtime и Microsoft Visual C++ Runtime.
+          "@ | Set-Content release-notes.md -Encoding utf8
+
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload v0.2.0 artifacts/downloads/* --clobber --repo $env:GITHUB_REPOSITORY
+            gh release upload $tag artifacts/downloads/* --clobber --repo $env:GITHUB_REPOSITORY
+            gh release edit $tag --title "ExploreEarth 1.0.0" --notes-file release-notes.md --repo $env:GITHUB_REPOSITORY
           }
           else {
-            gh release create v0.2.0 artifacts/downloads/* --target $env:GITHUB_SHA --title "ExploreEarth 0.2.0" --notes "Готовый установщик Windows x64 и portable-сборка. Локальный OCR eng/rus, GeoGuesser и два вида карты." --repo $env:GITHUB_REPOSITORY
+            gh release create $tag artifacts/downloads/* --target $env:GITHUB_SHA --title "ExploreEarth 1.0.0" --notes-file release-notes.md --repo $env:GITHUB_REPOSITORY
           }

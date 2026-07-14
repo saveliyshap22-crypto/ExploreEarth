@@ -30,7 +30,17 @@ public partial class App : Application
             client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
             client.Timeout = TimeSpan.FromSeconds(12);
             client.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "ExploreEarth/0.1 (+https://github.com/saveliyshap22-crypto/ExploreEarth)");
+                "ExploreEarth/1.0 (+https://github.com/saveliyshap22-crypto/ExploreEarth)");
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AutomaticDecompression = System.Net.DecompressionMethods.All,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+        });
+        services.AddHttpClient<PanoramaxService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(12);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "ExploreEarth/1.0 (+https://github.com/saveliyshap22-crypto/ExploreEarth)");
         }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
         {
             AutomaticDecompression = System.Net.DecompressionMethods.All,

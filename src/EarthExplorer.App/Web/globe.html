@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ExploreEarth 3D</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.132.0/Build/Cesium/Widgets/widgets.css" />
+  <style>
+    html, body, #globe { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #020712; }
+    body { font-family: Inter, Segoe UI, sans-serif; }
+    #loading {
+      position: absolute; inset: 0; display: grid; place-items: center; z-index: 20;
+      color: #dbeafe; background: radial-gradient(circle at center, #102445, #020712 72%);
+      transition: opacity .35s ease;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    #hud {
+      position: absolute; top: 16px; left: 16px; z-index: 10; padding: 10px 12px;
+      color: #e6eefc; background: rgba(8, 16, 31, .78); border: 1px solid rgba(125, 211, 252, .28);
+      border-radius: 12px; backdrop-filter: blur(14px); box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    #hud strong { display: block; font-size: 13px; }
+    #hud span { display: block; margin-top: 3px; font-size: 11px; color: #a9bad2; }
+    #home {
+      position: absolute; right: 16px; bottom: 18px; z-index: 10; border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px; color: white; background: rgba(8, 16, 31, .82); padding: 9px 12px; cursor: pointer;
+    }
+    #credits {
+      position: absolute; left: 12px; bottom: 10px; z-index: 11; max-width: calc(100% - 170px);
+      color: #d9e5f5; background: rgba(8, 16, 31, .78); border-radius: 8px; padding: 5px 8px;
+      font-size: 10px; line-height: 1.3; backdrop-filter: blur(10px);
+    }
+    #credits a { color: #b9dcff; text-decoration: none; }
+    .cesium-viewer-toolbar, .cesium-viewer-animationContainer,
+    .cesium-viewer-timelineContainer, .cesium-viewer-fullscreenContainer { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="globe"></div>
+  <div id="loading">Загрузка 3D Земли…</div>
+  <div id="hud"><strong>3D Земля</strong><span>ЛКМ — вращение · колесо — масштаб · клик — координаты</span></div>
+  <div id="credits" aria-label="Лицензии и атрибуция карты"></div>
+  <button id="home" type="button">Вся Земля</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.132.0/Build/Cesium/Cesium.js"></script>
+  <script>
+    (() => {
+      const loading = document.getElementById('loading');
+      const post = payload => {
+        if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(payload);
+      };
+
+      try {
+        const osm = new Cesium.OpenStreetMapImageryProvider({
+          url: 'https://tile.openstreetmap.org/',
+          credit: new Cesium.Credit(
+            '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a>',
+            true
+          )
+        });
+
+        const viewer = new Cesium.Viewer('globe', {
+          animation: false,
+          timeline: false,
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          sceneModePicker: false,
+          navigationHelpButton: false,
+          infoBox: false,
+          selectionIndicator: false,
+          fullscreenButton: false,
+          shouldAnimate: true,
+          imageryProvider: osm,
+          creditContainer: document.getElementById('credits'),
+          terrainProvider: new Cesium.EllipsoidTerrainProvider()
+        });
+
+        viewer.scene.globe.enableLighting = true;
+        viewer.scene.globe.showGroundAtmosphere = true;
+        viewer.scene.skyAtmosphere.show = true;
+        viewer.scene.screenSpaceCameraController.minimumZoomDistance = 90;
+        viewer.scene.screenSpaceCameraController.maximumZoomDistance = 30000000;
+        viewer.camera.setView({
+          destination: Cesium.Cartesian3.fromDegrees(15, 24, 19000000),
+          orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 }
+        });
+
+        const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+        handler.setInputAction(event => {
+          const ray = viewer.camera.getPickRay(event.position);
+          const point = ray && viewer.scene.globe.pick(ray, viewer.scene);
+          if (!point) return;
+          const cartographic = Cesium.Cartographic.fromCartesian(point);
+          post({
+            type: 'tap',
+            latitude: Cesium.Math.toDegrees(cartographic.latitude),
+            longitude: Cesium.Math.toDegrees(cartographic.longitude)
+          });
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+        document.getElementById('home').addEventListener('click', () => {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(15, 24, 19000000),
+            duration: 1.1
+          });
+        });
+
+        window.exploreEarth = {
+          flyTo(latitude, longitude, altitude = 650000) {
+            viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, altitude),
+              duration: 1.2
+            });
+          }
+        };
+
+        viewer.scene.globe.tileLoadProgressEvent.addEventListener(remaining => {
+          if (remaining === 0) loading.classList.add('hidden');
+        });
+        setTimeout(() => loading.classList.add('hidden'), 5000);
+        post({ type: 'ready' });
+      } catch (error) {
+        loading.textContent = 'Не удалось загрузить 3D Землю. Проверьте интернет и WebView2.';
+        post({ type: 'error', message: String(error) });
+      }
+    })();
+  </script>
+</body>
+</html>
