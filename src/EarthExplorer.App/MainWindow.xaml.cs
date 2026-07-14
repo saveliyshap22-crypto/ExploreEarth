@@ -32,13 +32,7 @@ public partial class MainWindow : Window
         mapController.Map.Navigator.ViewportChanged += OnViewportChanged;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         viewModel.StreetViewerRequested += OnStreetViewerRequested;
-        Loaded += OnLoaded;
         Closed += OnClosed;
-    }
-
-    private async void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        await EnsureGlobeInitializedAsync();
     }
 
     private async Task EnsureGlobeInitializedAsync()
@@ -58,7 +52,11 @@ public partial class MainWindow : Window
             var globePath = Path.Combine(AppContext.BaseDirectory, "Web", "globe.html");
             if (!File.Exists(globePath))
             {
-                _viewModel.UpdatePointer(0, 0);
+                MessageBox.Show(
+                    "Файл 3D-глобуса не найден. Переустановите ExploreEarth.",
+                    "ExploreEarth",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
@@ -68,7 +66,7 @@ public partial class MainWindow : Window
         catch (WebView2RuntimeNotFoundException)
         {
             MessageBox.Show(
-                "Для 3D Земли и панорам нужен Microsoft Edge WebView2 Runtime. В Windows 10/11 он обычно уже установлен.",
+                "Для 3D Земли и панорам нужен Microsoft Edge WebView2 Runtime. Запустите Install-Prerequisites.cmd или переустановите ExploreEarth.",
                 "ExploreEarth",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -207,7 +205,7 @@ public partial class MainWindow : Window
         catch (WebView2RuntimeNotFoundException)
         {
             MessageBox.Show(
-                "Не найден Microsoft Edge WebView2 Runtime.",
+                "Не найден Microsoft Edge WebView2 Runtime. Запустите Install-Prerequisites.cmd или переустановите ExploreEarth.",
                 "ExploreEarth",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -256,7 +254,6 @@ public partial class MainWindow : Window
             GlobeWebView.CoreWebView2.WebMessageReceived -= OnGlobeMessageReceived;
         }
 
-        Loaded -= OnLoaded;
         Closed -= OnClosed;
     }
 }
