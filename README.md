@@ -63,7 +63,7 @@ ARM64:
 .\build-release.ps1 -Runtime win-arm64
 ```
 
-Результат появится в `dist\ExploreEarth-portable-<runtime>.zip`. Скрипт также добавит модели `eng` и `rus`. Single-file отключён: Mapsui/SkiaSharp, Tesseract и WebView2 поставляют нативные библиотеки, поэтому папка внутри ZIP надёжнее одного файла.
+Результат появится в `dist\ExploreEarth-<version>-portable-<runtime>.zip`. Скрипт также добавит модели `eng` и `rus`, установщики зависимостей и проверит версию EXE. Single-file отключён: Mapsui/SkiaSharp, Tesseract и WebView2 поставляют нативные библиотеки, поэтому папка внутри ZIP надёжнее одного файла.
 
 ## Карта, 3D и панорамы
 
