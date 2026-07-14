@@ -31,8 +31,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly IMapNavigationService _map;
     private readonly IFilePickerService _filePicker;
     private readonly IThemeService _theme;
+    private readonly PanoramaxService _panoramax;
     private readonly DispatcherTimer _resourceTimer;
     private CancellationTokenSource? _photoAnalysisCancellation;
+    private CancellationTokenSource? _streetImageCancellation;
     private AppMode _currentMode = AppMode.Map;
     private string _searchText = string.Empty;
     private string _statusMessage = "Готово к поиску";
@@ -48,6 +50,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private string _geoGuessClue = "Начните раунд и поставьте метку на карте.";
     private string _geoGuessResult = "За один раунд можно получить до 5000 очков.";
     private string _geoGuessSelectionText = "Ответ ещё не выбран";
+    private string _streetImageStatus = "Перетащите человечка на карту, чтобы открыть ближайшую открытую панораму.";
+    private Uri? _streetImageUri;
+    private Uri? _streetViewerUri;
     private PlaceSearchResult? _selectedResult;
     private PhotoGeolocationHypothesis? _selectedPhotoHypothesis;
     private GeoGuessRound? _currentRound;
@@ -55,27 +60,28 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isPhotoAnalyzing;
     private bool _isGeoGuessRevealed;
+    private bool _isStreetImageLoading;
 
     public MainViewModel(
         IGeocodingService geocoding,
         IPhotoGeolocationService photoGeolocation,
         IMapNavigationService map,
         IFilePickerService filePicker,
-        IThemeService theme)
+        IThemeService theme,
+        PanoramaxService panoramax)
     {
         _geocoding = geocoding;
         _photoGeolocation = photoGeolocation;
         _map = map;
         _filePicker = filePicker;
         _theme = theme;
+        _panoramax = panoramax;
 
         SearchCommand = new AsyncRelayCommand(SearchAsync, () => !string.IsNullOrWhiteSpace(SearchText));
         OpenSelectedResultCommand = new RelayCommand(OpenSelectedResult, () => SelectedResult is not null);
         ShowPhotoHypothesisCommand = new RelayCommand(ShowPhotoHypothesis, () => SelectedPhotoHypothesis is not null);
         ChoosePhotoCommand = new AsyncRelayCommand(ChoosePhotoAsync);
-        AnalyzePhotoCommand = new AsyncRelayCommand(
-            AnalyzeCurrentPhotoAsync,
-            () => HasPhoto && !IsPhotoAnalyzing);
+        AnalyzePhotoCommand = new AsyncRelayCommand(AnalyzeCurrentPhotoAsync, () => HasPhoto && !IsPhotoAnalyzing);
         CancelPhotoAnalysisCommand = new RelayCommand(CancelPhotoAnalysis, () => IsPhotoAnalyzing);
         ToggleThemeCommand = new RelayCommand(ToggleTheme);
         ShowWorldCommand = new RelayCommand(_map.ShowWorld);
@@ -83,14 +89,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ZoomOutCommand = new RelayCommand(_map.ZoomOut);
 
         ShowMapModeCommand = new RelayCommand(() => SetMode(AppMode.Map));
+        ShowGlobeModeCommand = new RelayCommand(() => SetMode(AppMode.Globe));
         ShowMapStylesModeCommand = new RelayCommand(() => SetMode(AppMode.MapStyles));
         ShowGeoGuesserModeCommand = new RelayCommand(() => SetMode(AppMode.GeoGuesser));
         ShowPhotoAiModeCommand = new RelayCommand(() => SetMode(AppMode.PhotoAi));
         UseStandardMapCommand = new RelayCommand(() => UseMapStyle(MapStyle.Standard));
         UseTopographicMapCommand = new RelayCommand(() => UseMapStyle(MapStyle.Topographic));
         StartGeoGuessRoundCommand = new RelayCommand(StartGeoGuessRound);
-        SubmitGeoGuessCommand = new RelayCommand(
-            SubmitGeoGuess,
+        SubmitGeoGuessCommand = new RelayCommand(SubmitGeoGuess,
             () => _currentRound is not null && _geoGuessSelection is not null && !IsGeoGuessRevealed);
 
         _resourceTimer = new DispatcherTimer(
@@ -101,6 +107,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _resourceTimer.Start();
         UpdateResourceText(this, EventArgs.Empty);
     }
+
+    public event Action<Uri>? StreetViewerRequested;
 
     public ObservableCollection<PlaceSearchResult> SearchResults { get; } = [];
 
@@ -117,19 +125,25 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
 
             OnPropertyChanged(nameof(IsMapMode));
+            OnPropertyChanged(nameof(IsGlobeMode));
             OnPropertyChanged(nameof(IsMapStylesMode));
             OnPropertyChanged(nameof(IsGeoGuesserMode));
             OnPropertyChanged(nameof(IsPhotoAiMode));
+            OnPropertyChanged(nameof(IsTwoDimensionalMapVisible));
         }
     }
 
     public bool IsMapMode => CurrentMode == AppMode.Map;
+
+    public bool IsGlobeMode => CurrentMode == AppMode.Globe;
 
     public bool IsMapStylesMode => CurrentMode == AppMode.MapStyles;
 
     public bool IsGeoGuesserMode => CurrentMode == AppMode.GeoGuesser;
 
     public bool IsPhotoAiMode => CurrentMode == AppMode.PhotoAi;
+
+    public bool IsTwoDimensionalMapVisible => !IsGlobeMode;
 
     public string SearchText
     {
@@ -245,6 +259,38 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    public string StreetImageStatus
+    {
+        get => _streetImageStatus;
+        private set => SetProperty(ref _streetImageStatus, value);
+    }
+
+    public Uri? StreetImageUri
+    {
+        get => _streetImageUri;
+        private set
+        {
+            if (SetProperty(ref _streetImageUri, value))
+            {
+                OnPropertyChanged(nameof(HasStreetImage));
+            }
+        }
+    }
+
+    public Uri? StreetViewerUri
+    {
+        get => _streetViewerUri;
+        private set => SetProperty(ref _streetViewerUri, value);
+    }
+
+    public bool HasStreetImage => StreetImageUri is not null;
+
+    public bool IsStreetImageLoading
+    {
+        get => _isStreetImageLoading;
+        private set => SetProperty(ref _isStreetImageLoading, value);
+    }
+
     public PlaceSearchResult? SelectedResult
     {
         get => _selectedResult;
@@ -295,39 +341,23 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public AsyncRelayCommand SearchCommand { get; }
-
     public RelayCommand OpenSelectedResultCommand { get; }
-
     public RelayCommand ShowPhotoHypothesisCommand { get; }
-
     public AsyncRelayCommand ChoosePhotoCommand { get; }
-
     public AsyncRelayCommand AnalyzePhotoCommand { get; }
-
     public RelayCommand CancelPhotoAnalysisCommand { get; }
-
     public RelayCommand ToggleThemeCommand { get; }
-
     public RelayCommand ShowWorldCommand { get; }
-
     public RelayCommand ZoomInCommand { get; }
-
     public RelayCommand ZoomOutCommand { get; }
-
     public RelayCommand ShowMapModeCommand { get; }
-
+    public RelayCommand ShowGlobeModeCommand { get; }
     public RelayCommand ShowMapStylesModeCommand { get; }
-
     public RelayCommand ShowGeoGuesserModeCommand { get; }
-
     public RelayCommand ShowPhotoAiModeCommand { get; }
-
     public RelayCommand UseStandardMapCommand { get; }
-
     public RelayCommand UseTopographicMapCommand { get; }
-
     public RelayCommand StartGeoGuessRoundCommand { get; }
-
     public RelayCommand SubmitGeoGuessCommand { get; }
 
     public async Task AnalyzePhotoAsync(string filePath)
@@ -409,6 +439,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         SubmitGeoGuessCommand.RaiseCanExecuteChanged();
     }
 
+    public async Task OpenStreetAtAsync(double longitude, double latitude)
+    {
+        var coordinate = new GeoCoordinate(Math.Clamp(latitude, -85, 85), Math.Clamp(longitude, -180, 180));
+        await LoadStreetImageAsync(coordinate, false);
+    }
+
+    public void OpenStreetViewer()
+    {
+        if (StreetViewerUri is not null)
+        {
+            StreetViewerRequested?.Invoke(StreetViewerUri);
+        }
+    }
+
     public void UpdatePointer(double longitude, double latitude) =>
         PointerCoordinates = $"Курсор: {latitude:F6}, {longitude:F6}";
 
@@ -424,6 +468,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _resourceTimer.Tick -= UpdateResourceText;
         _photoAnalysisCancellation?.Cancel();
         _photoAnalysisCancellation?.Dispose();
+        _streetImageCancellation?.Cancel();
+        _streetImageCancellation?.Dispose();
     }
 
     private async Task SearchAsync()
@@ -555,12 +601,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _geoGuessSelection = null;
         IsGeoGuessRevealed = false;
         GeoGuessClue = next.Clue;
-        GeoGuessResult = "Поставьте метку на карте и подтвердите ответ.";
+        GeoGuessResult = "Изучите фото улицы, поставьте метку на карте и подтвердите ответ.";
         GeoGuessSelectionText = "Ответ ещё не выбран";
         _map.ClearGeoGuess();
         _map.ShowWorld();
         SubmitGeoGuessCommand.RaiseCanExecuteChanged();
         StatusMessage = "Новый раунд GeoGuesser начат";
+        _ = LoadStreetImageAsync(next.Coordinate, true);
     }
 
     private void SubmitGeoGuess()
@@ -576,6 +623,57 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _map.RevealGeoGuess(_currentRound.Coordinate);
         GeoGuessResult = $"{_currentRound.PlaceName} · {distance:F0} км · {score} / 5000 очков";
         StatusMessage = "Ответ открыт: жёлтая метка — ваш выбор, зелёная — правильное место";
+    }
+
+    private async Task LoadStreetImageAsync(GeoCoordinate coordinate, bool forGeoGuess)
+    {
+        _streetImageCancellation?.Cancel();
+        _streetImageCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _streetImageCancellation = cancellation;
+        IsStreetImageLoading = true;
+        StreetImageUri = null;
+        StreetViewerUri = PanoramaxService.BuildCoverageUri(coordinate);
+        StreetImageStatus = forGeoGuess
+            ? "Ищу ближайшее уличное фото для раунда…"
+            : "Ищу ближайшую открытую панораму…";
+
+        try
+        {
+            var picture = await _panoramax.FindNearestAsync(coordinate, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (picture is null)
+            {
+                StreetImageStatus = "Рядом не найдено открытых снимков. Можно открыть карту покрытия Panoramax.";
+                return;
+            }
+
+            StreetImageUri = picture.ImageUri;
+            StreetViewerUri = picture.ViewerUri;
+            StreetImageStatus = picture.ImageUri is null
+                ? "Панорама найдена. Откройте интерактивный просмотр."
+                : forGeoGuess
+                    ? "Уличное фото загружено. Определите место и поставьте метку."
+                    : $"Найдена панорама в {picture.DistanceKilometers:F2} км от точки.";
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer drag or a new GeoGuessr round replaced this request.
+        }
+        catch (Exception)
+        {
+            StreetImageStatus = "Не удалось загрузить панораму. Проверьте интернет или откройте карту покрытия.";
+        }
+        finally
+        {
+            if (ReferenceEquals(_streetImageCancellation, cancellation))
+            {
+                IsStreetImageLoading = false;
+                _streetImageCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
     }
 
     private static string BuildMetadataSummary(PhotoGeolocationResult result)
