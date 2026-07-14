@@ -16,10 +16,12 @@
     <PackageReference Include="Mapsui.Wpf" Version="5.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\appsettings.example.json" Link="appsettings.example.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Web\globe.html" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
